@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>Kidney Disease Classifier</title>
+
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+		integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+	<style>
+		body {
+			background-color: #f8f9fa;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+		h3 {
+			color: #1b2d6b;
+			font-weight: 700;
+		}
+		.card {
+			box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+			border: none;
+			border-radius: 10px;
+		}
+		.image-part video,
+		.image-part img {
+			width: 100%;
+			height: auto;
+			border-radius: 5px;
+		}
+		.image-part {
+			border: 1px solid #dee2e6;
+			border-radius: 10px;
+			padding: 10px;
+			background-color: white;
+			min-height: 300px;
+			position: relative;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		#photo {
+			display: none;
+			max-width: 100%;
+			border-radius: 10px;
+		}
+		.res-card {
+			height: 310px;
+			overflow: auto;
+			background-color: #fff;
+			border: 1px solid #dee2e6;
+			border-radius: 10px;
+			padding: 10px;
+			display: justify-center;
+		}
+		.resp-img {
+			width: 100%;
+			height: auto;
+			border-radius: 10px;
+		}
+		#loading {
+			position: fixed;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			z-index: 999999;
+			background: rgba(255, 255, 255, 0.7);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.loader {
+			border: 8px solid #f3f3f3;
+			border-top: 8px solid #363e75;
+			border-radius: 50%;
+			width: 60px;
+			height: 60px;
+			animation: spin 2s linear infinite;
+		}
+		@keyframes spin {
+			0% { transform: rotate(0deg); }
+			100% { transform: rotate(360deg); }
+		}
+	</style>
+</head>
+<body>
+	<div class="container my-5">
+		<!-- <h3 class="text-center mb-4">Kidney Disease Classification</h3> -->
+		<div class="row">
+			<div class="col-md-6 mb-4">
+				<div class="card p-4">
+					<div class="image-part mb-3">
+						<video autoplay id="video"
+							poster="https://img.freepik.com/free-vector/group-young-people-posing-photo_52683-18824.jpg?size=338&ext=jpg"></video>
+						<img src="" id="photo">
+						<canvas style="display:none;" id="canvas"></canvas>
+					</div>
+					<form id="upload-data pt-3">
+						<div class="d-flex justify-content-between mb-3">
+							<button type="button" class="btn btn-primary w-45" id="uload">Upload</button>
+							<button id="send" type="button" class="btn btn-success w-45">Predict</button>
+						</div>
+						<a id="send" href="/train" class="btn btn-outline-success btn-block">Train Model</a>
+						<input type="hidden" class="form-control mt-2" id="url" value="../predict" />
+						<input name="upload" type="file" id="fileinput" style="position:absolute;top:-500px;" />
+					</form>
+				</div>
+			</div>
+			<div class="col-md-6 justify-content-center">
+				<div class="card p-4">
+					<h5 class="text-center mb-3">Prediction Results</h5>
+					<div class="d-flex justify-content-center">
+						<div class="col-md-10 mb-5 mt-3">
+							<div class="res-card res-part text-center">
+								<div class="jsonRes"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			
+		</div>
+	</div>
+
+	<div id="loading"><div class="loader"></div></div>
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+		integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+		integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+	<script>
+		// KEEPING ORIGINAL SCRIPT UNCHANGED
+		var mybtn = document.getElementById('startbtn');
+		var myvideo = document.getElementById('video');
+		var mycanvas = document.getElementById('canvas');
+		var myphoto = document.getElementById('photo');
+		var base_data = "";
+
+		function sendRequest(base64Data){
+			var type = "json";
+			if(base64Data != "" || base64Data != null){
+				if(type == "imgtobase"){
+					$(".res-part").html("");
+					$(".res-part").html(base64Data);
+				}
+				else if(type == "basetoimg"){
+					var imageData = $("#imgstring").val();
+					$(".res-part").html("");
+					$(".res-part").append("<img src='data:image/jpeg;base64," + imageData + "' alt='' />");
+				}
+				else{
+					var url = $("#url").val();
+					$("#loading").show();
+					$.ajax({
+						url : url,
+						type: "post",
+						cache: false,
+						async: true,
+						crossDomain: true,
+						headers: {
+							'Content-Type': 'application/json',
+							'Access-Control-Allow-Origin':'*'
+						},
+						data:JSON.stringify({image:base64Data}),
+						success: function(res){
+							$(".res-part").html("");
+							$(".res-part2").html("");
+							try{
+								var imageData = res[1].image;
+								if(imageData.length > 100){
+									if(imageData.length > 10){
+										$(".res-part2").append("<img class='resp-img' src='data:image/jpeg;base64," + imageData + "' alt='' />");
+									}
+								}
+							}catch(e){}
+							$(".res-part").html("<pre>" + JSON.stringify(res, undefined, 2) + "</pre>");
+							$("#loading").hide();
+						}
+					});
+				}
+			}
+		}
+
+		$(document).ready(function(){
+			$("#loading").hide();
+			$('#send').click(function(evt){
+				sendRequest(base_data);
+			});
+			$('#uload').click(function(evt) {
+				$('#fileinput').focus().trigger('click');
+			});
+			$("#fileinput").change(function(){
+				if (this.files && this.files[0]){
+					var reader = new FileReader();
+					reader.onload = function (e){
+						var url = e.target.result;
+						var img = new Image();
+						img.crossOrigin = 'Anonymous';
+						img.onload = function(){
+							var canvas = document.createElement('CANVAS');
+							var ctx = canvas.getContext('2d');
+							canvas.height = this.height;
+							canvas.width = this.width;
+							ctx.drawImage(this, 0, 0);
+							base_data = canvas.toDataURL('image/jpeg', 1.0).replace(/^data:image.+;base64,/, '');
+							canvas = null;
+						};
+						img.src = url;
+						$('#photo').attr('src', url);
+						$('#photo').show();
+						$('#video').hide();
+					}
+					reader.readAsDataURL(this.files[0]);
+				}
+			});
+		});
+	</script>
+</body>
+</html>

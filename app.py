@@ -12,7 +12,7 @@ os.putenv('LC_ALL', 'en_US.UTF-8')
 app = Flask(__name__)
 CORS(app)
 
-## app
+## app flask
 class ClientApp:
     def __init__(self):
         self.filename = "inputImage.jpg"
